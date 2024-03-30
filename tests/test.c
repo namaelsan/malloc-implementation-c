@@ -1,0 +1,1 @@
+/*test.c sonradan eklenecek sizin bir sey yapmaniz gerekmiyor*/
