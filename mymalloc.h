@@ -10,19 +10,20 @@ typedef enum { ADDR_ORDERED_LIST, NONORDERED_LIST } ListType;
 Strategy strategy = BEST_FIT;
 ListType listtype = ADDR_ORDERED_LIST;
 
+/* There is a padding:|8-byte size|4 byte isfree|padding|*/
 typedef struct tag {
     uint64_t size;       /*number of  16 byte blocks*/
     uint32_t isfree;     /* you can make this larger and remove padding: */
-    uint32_t padding[4]; /*unused space between boundaries*/
-} __attribute__((packed, aligned(16))) Tag; /* There is a padding*/
+    uint32_t padding; /*unused space between boundaries*/
+} __attribute__((packed, aligned(16))) Tag; 
 
+/*Block: |4byte(next)|4byte(prev)|8-byte size|4 byte isfree|padding|0-byte(data)|*/
 typedef struct block {
     struct block *next; /*next free*/
     struct block *prev; /*next free*/
     Tag info;           /*size and isfree*/
     char data[];        /*start of the allocated memory*/
 } __attribute__((packed, aligned(16))) Block;
-/*Block: |8-byte size|4 byte isfree|padding|0-byte(data)|*/
 
 static Block *free_list = 0;  /*start of the free list*/
 static Block *heap_start = 0; /*head of allocated memory from sbrk */
