@@ -17,7 +17,7 @@ typedef struct tag {
     uint32_t padding; /*unused space between boundaries*/
 } __attribute__((packed, aligned(16))) Tag; 
 
-/*Block: |4byte(next)|4byte(prev)|8-byte size|4 byte isfree|padding|0-byte(data)|*/
+/*Block: |8byte(next)|8byte(prev)|8-byte size|4byte isfree|padding|0-byte(data)|*/
 typedef struct block {
     struct block *next; /*next free*/
     struct block *prev; /*next free*/
