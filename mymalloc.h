@@ -1,4 +1,6 @@
-
+/*TIPLER VE TANIMLAMALARDA DEGISIKLIK YAPMAYINIZ:
+HATA OlDUGUNU DUSUNUYORSANIZ PIAZZADAN FOLLOW-UPLARDA PAYLASINIZ
+*/
 #include <inttypes.h>
 #include <stddef.h>
 #define HEAP_SIZE 1024 /*used in sbrk to extend heap*/
