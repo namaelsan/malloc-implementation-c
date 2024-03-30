@@ -22,7 +22,7 @@ typedef struct block {
     struct block *prev; /*next free*/
     char data[];        /*start of the allocated memory*/
 } __attribute__((packed, aligned(16))) Block;
-/*Block: |4byte(next)|4byte(prev)|8-byte size|4 byte isfree|0-byte(data)|*/
+/*Block: |8-byte size|4 byte isfree|4byte(next)|4byte(prev)|0-byte(data)|*/
 
 static Block *free_list = 0;  /*start of the free list*/
 static Block *heap_start = 0; /*head of allocated memory from sbrk */
