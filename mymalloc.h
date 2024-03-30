@@ -17,12 +17,12 @@ typedef struct tag {
 } __attribute__((packed, aligned(16))) Tag; /* There is a padding*/
 
 typedef struct block {
-    Tag info;           /*size and isfree*/
     struct block *next; /*next free*/
     struct block *prev; /*next free*/
+    Tag info;           /*size and isfree*/
     char data[];        /*start of the allocated memory*/
 } __attribute__((packed, aligned(16))) Block;
-/*Block: |8-byte size|4 byte isfree|4byte(next)|4byte(prev)|0-byte(data)|*/
+/*Block: |8-byte size|4 byte isfree|padding|0-byte(data)|*/
 
 static Block *free_list = 0;  /*start of the free list*/
 static Block *heap_start = 0; /*head of allocated memory from sbrk */
