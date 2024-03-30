@@ -6,7 +6,7 @@ HATA OlDUGUNU DUSUNUYORSANIZ PIAZZADAN FOLLOW-UPLARDA PAYLASINIZ
 #define HEAP_SIZE 1024 /*used in sbrk to extend heap*/
 
 typedef enum { BEST_FIT, NEXT_FIT, FIRST_FIT, WORST_FIT } Strategy;
-typedef enum { ADDR_ORDERED_LIST, NONORDERED_LIST } ListType;
+typedef enum { ADDR_ORDERED_LIST, UNORDERED_LIST } ListType;
 Strategy strategy = BEST_FIT;
 ListType listtype = ADDR_ORDERED_LIST;
 
