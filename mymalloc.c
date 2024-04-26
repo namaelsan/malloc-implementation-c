@@ -19,14 +19,14 @@ void free_block_from_list(Block *b){
 
 Block *find_free_block(size_t block_count){
     Block *b=free_list;
-    Block *prev,*next,*new,*temp,*min;
+    Block *prev,*next,*new,*temp,*min,*max;
     size_t size=block_count*16;
 
-    if(getstrategy()==BEST_FIT){
+    if(getstrategy() == BEST_FIT){
         min=b;
 
         while(b<heap_end && b!= NULL){
-            if((b->info.size < min->info.size) &&(min->info.size >= size)){
+            if((min->info.size > b->info.size) && (min->info.size >= size)){
                 min=b;
             }
             b=next_block_in_freelist(b);
@@ -36,16 +36,63 @@ Block *find_free_block(size_t block_count){
 
         return NULL;
     }
-    else if(getstrategy()== NEXT_FIT){
-
+    
+    else if(getstrategy() == NEXT_FIT){
+        Block *start = last_freed; // last freedin başlangıç değerini saklamak için
+	b = last_freed; // aramayı en son free edilmiş blocktan başlat
+	
+	while(b < heap_end && b! = NULL){
+	    if(b->info.size >= size){ // last_freed'den heap_end'e kadar kontrol et
+	       return b;  // uygun değer bulunursa return et
+	     }
+	
+	    b = next_block_in_freelist(b);   	
+	}
+	
+	// uygun block bulunamadıysa
+	
+	last_freed = start; // last_block baştaki değerine atanır
+	b = heap_start; // b, heap_start değerine sıfırlanır
+	while(b < last_freed && b! = NULL){
+	    if(b->info.size >= size){ // başlangıçtan last_freed'e kadar kontrol et
+	       return b;  // uygun değer bulunursa return et
+	    }	    			
+	    b = next_block_in_freelist(b); 
+	}
+	return NULL; //tüm list iki döngü ile gezilmiş ama uygun block bulunamamışsa NULL return et
     }
-    else if(getstrategy()== FIRST_FIT){
-
+    
+    else if(getstrategy() == FIRST_FIT){
+     
+	while(b < heap_end && b!= NULL){
+	    if(b->info.size >= size){
+	     return b;
+	}
+	b = next_block_in_freelist(b);    
     }
-    else if(getstrategy()== WORST_FIT){
-
+	return NULL;
     }
+    
+    else if(getstrategy() == WORST_FIT){
+    
+	max = b; // max ilk bloktan başlar
+	
+	while(b < heap_end && b != NULL){
+	    if(b->info.size > max->info.size && b->info.size >= size){
+	     max = b;
+	    }
+	 b = next_block_in_freelist(b);     
+	}
+
+    if (max != free_list) { // uygun block bulunmuştur
+        return max;
+    } else {
+        return NULL; // listede uygun block yoktur null dönderilir
+    }
+    }
+    
 }
+
 
 Block *create_block(Block *b,size_t data_size){
     size_t size=data_size-(sizeof(Block)+sizeof(Tag));
