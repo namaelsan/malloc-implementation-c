@@ -31,64 +31,59 @@ Block *find_free_block(size_t block_count){
             }
             b=next_block_in_freelist(b);
         }
-        new=min;
+        if (min->info.size < size)
+            return NULL;
 
-
-        return NULL;
+        return min;
     }
     
     else if(getstrategy() == NEXT_FIT){
-        Block *start = last_freed; // last freedin başlangıç değerini saklamak için
-	b = last_freed; // aramayı en son free edilmiş blocktan başlat
-	
-	while(b < heap_end && b! = NULL){
-	    if(b->info.size >= size){ // last_freed'den heap_end'e kadar kontrol et
-	       return b;  // uygun değer bulunursa return et
-	     }
-	
-	    b = next_block_in_freelist(b);   	
-	}
-	
-	// uygun block bulunamadıysa
-	
-	last_freed = start; // last_block baştaki değerine atanır
-	b = heap_start; // b, heap_start değerine sıfırlanır
-	while(b < last_freed && b! = NULL){
-	    if(b->info.size >= size){ // başlangıçtan last_freed'e kadar kontrol et
-	       return b;  // uygun değer bulunursa return et
-	    }	    			
-	    b = next_block_in_freelist(b); 
-	}
-	return NULL; //tüm list iki döngü ile gezilmiş ama uygun block bulunamamışsa NULL return et
+        b = last_freed; // aramayı en son free edilmiş blocktan başlat
+        
+        while(b < heap_end && b!= NULL){
+            if(b->info.size >= size){ // last_freed'den heap_end'e kadar kontrol et
+            return b;  // uygun değer bulunursa return et
+            }
+            b = next_block_in_freelist(b);   	
+        }
+        
+        // uygun block bulunamadıysa
+        b = heap_start; // b, heap_start değerine sıfırlanır
+        while(b < last_freed && b!= NULL){  // başlangıçtan last_freed'e kadar kontrol et
+            if(b->info.size >= size){ // uygun değer bulunursa return et
+            return b;  
+            }	    			
+            b = next_block_in_freelist(b); 
+        }
+        return NULL; //tüm list iki döngü ile gezilmiş ama uygun block bulunamamışsa NULL return et
     }
     
     else if(getstrategy() == FIRST_FIT){
      
-	while(b < heap_end && b!= NULL){
-	    if(b->info.size >= size){
-	     return b;
-	}
-	b = next_block_in_freelist(b);    
+        while(b < heap_end && b!= NULL){
+            if(b->info.size >= size){
+                return b;
+            }
+            b = next_block_in_freelist(b);    
+        }
+        return NULL;
     }
-	return NULL;
-    }
-    
+        
     else if(getstrategy() == WORST_FIT){
-    
-	max = b; // max ilk bloktan başlar
-	
-	while(b < heap_end && b != NULL){
-	    if(b->info.size > max->info.size && b->info.size >= size){
-	     max = b;
-	    }
-	 b = next_block_in_freelist(b);     
-	}
 
-    if (max != free_list) { // uygun block bulunmuştur
-        return max;
-    } else {
-        return NULL; // listede uygun block yoktur null dönderilir
-    }
+        max = b; // max ilk bloktan başlar
+        while(b < heap_end && b != NULL){
+            if(b->info.size > max->info.size && b->info.size >= size){
+                max = b;
+            }
+            b = next_block_in_freelist(b);     
+        }
+
+        if (max != free_list) { // uygun block bulunmuştur
+            return max;
+        } else {
+            return NULL; // listede uygun block yoktur null dönderilir
+        }
     }
     
 }
@@ -249,14 +244,15 @@ Block *prev_block_in_freelist(Block *b) {
 
 /** for a given block returns its right neghbor in the address*/
 Block *next_block_in_addr(Block *b) { 
-    Block * new=b + sizeof(Block) + b->info.size +b->info.padding;
-    return b;
+    Block *new=(char *)b + sizeof(Block) + b->info.size +b->info.padding + sizeof(Tag);
+    return new;
 }
 
 /** for a given block returns its left neghbor in the address*/
 Block *prev_block_in_addr(Block *b) { 
-    Block * new=b + sizeof(Block) + b->info.size +b->info.padding;
-    return b;
+    Tag *tag=(char *)b -sizeof(Tag);
+    Block *new=(char *)tag -(tag->size + tag->padding + sizeof(Block));
+    return new;
 }
 
 /**for a given size in bytes, returns number of 16 blocks*/
