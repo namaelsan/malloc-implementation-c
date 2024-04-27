@@ -207,7 +207,7 @@ Block *left_coalesce(Block *b) {
         left->info.size = left->info.size + b->info.size + sizeof(Block) + sizeof(Tag); // sol bloğun yeni boyutu
             
         Tag *newtag = (char *)left + left->info.size + sizeof(Block); // sol bloğun tag yapısı güncellenir
-        newtag->info.size = left->info.size;
+        newtag->size = left->info.size;
         newtag->isfree = true;
 
         free_block_from_list(b); // sağdaki blocku listeden çıkarabiliriz
@@ -226,7 +226,7 @@ Block *right_coalesce(Block *b) {
         b->info.size = b->info.size + right->info.size + sizeof(Block) + sizeof(Tag); // b'nin yeni boyutu sağ blockla total boyut olacak
             
         Tag *newtag = (char *)b + b->info.size + sizeof(Block); // tag yapısı güncellenir
-        newtag->info.size = b->info.size;
+        newtag->size = b->info.size;
         newtag->isfree = true;
 
         free_block_from_list(right); // sağ bloğun artık free_listte olmasına gerek yok
