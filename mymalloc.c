@@ -26,7 +26,7 @@ void free_block_from_list(Block *b){
             next->prev = prev;
         if(prev != NULL)
             prev->next=next;
-        if(next == NULL && prev == NULL)
+        if(next == NULL && prev == NULL && b->info.isfree)
             free_list=NULL;
 
         b->info.isfree=false;
@@ -105,75 +105,6 @@ Block *find_free_block(size_t block_count){
     return NULL;
 }
 
-
-Block *create_block(Block *b,size_t data_size){
-    size_t size=data_size-(sizeof(Block)+sizeof(Tag));
-    b->next=next_block_in_freelist(b);
-    b->prev=prev_block_in_freelist(b);
-    b->info.isfree=true;
-    b->info.size=size;
-    b->info.padding=0;
-
-    Tag* newtag=(Tag *)((char *)b + size + sizeof(Block));
-    newtag->isfree=true;
-    newtag->size=size;
-    newtag->padding=0;
-
-    Block *prev=free_list;
-    while(next_block_in_freelist(prev)){
-        prev=next_block_in_freelist(prev);
-    }
-    prev->next=b;
-
-    return b;
-}
-
-Block *expandheap(size_t size){
-        Block *start = sbrk(HEAP_SIZE);
-        if (start == -1) {
-            perror("sbrk error: not available memory");
-            return NULL;
-        }
-        heap_end = (Block *)((char *)start + size);
-        Block *b = create_block(start, size);
-        return b;
-}
-
-/** finds a block based on strategy,
- * if necessary it splits the block,
- * allocates memory,
- * returns the start addrees of data[]*/
-void *mymalloc(size_t size) { 
-    static int first=true;
-    Block *b;
-    if (first){
-        heap_start=expandheap(HEAP_SIZE);
-        first=false;
-        heap_end=(Block *)((char *)heap_start+HEAP_SIZE);
-        free_list=heap_start;
-    }
-
-    int block_count=numberof16blocks(size);
-    b = find_free_block(block_count);
-
-    if(b->info.size >= size){
-        if(b->info.size >= size + sizeof(Block) + sizeof(Tag)){
-            b=split_block(b,block_count);
-        }
-        else{
-            free_block_from_list(b);
-        }
-        return b;
-    }
-
-    b=expandheap(HEAP_SIZE);
-    if(b){
-        return(mymalloc(size));
-    }
-    return NULL;
-
-}
-
 /*  */
 void add_free_list(Block *b){
     Block *temp = free_list;
@@ -204,16 +135,86 @@ void add_free_list(Block *b){
     }
 }
 
+Block *create_block(Block *b,size_t data_size){
+    size_t size=data_size-(sizeof(Block)+sizeof(Tag));
+    b->info.size=size;
+    b->info.isfree=false;
+    b->info.padding=0;
+    b->next=next_block_in_freelist(b);
+    b->prev=prev_block_in_freelist(b);
+
+
+    Tag* newtag=(Tag *)((char *)b + size + sizeof(Block));
+    newtag->isfree=false;
+    newtag->size=size;
+    newtag->padding=0;
+
+    add_free_list(b);
+
+    return b;
+}
+
+Block *expandheap(size_t size){
+        Block *start = sbrk(HEAP_SIZE);
+        heap_start = start;
+        if ((uint64_t)start == -1) {
+            perror("sbrk error: not available memory");
+            return NULL;
+        }
+        heap_end = (Block *)((char *)start + size);
+        start->info.isfree=false;
+        Block *b = create_block(start, size);
+        return b;
+}
+
+/** finds a block based on strategy,
+ * if necessary it splits the block,
+ * allocates memory,
+ * returns the start addrees of data[]*/
+void *mymalloc(size_t size) { 
+    static int first=true;
+    Block *b,*new;
+    if (first){
+        heap_start=expandheap(HEAP_SIZE);
+        first=false;
+        heap_end=(Block *)((char *)heap_start+HEAP_SIZE);
+    }
+
+    int block_count=numberof16blocks(size);
+    b = find_free_block(block_count);
+
+    if(b->info.size >= size){
+        if(b->info.size >= size + sizeof(Block) + sizeof(Tag)){
+            new=split_block(b,block_count);
+            add_free_list(b);
+            b=new;
+        }
+        else{
+            free_block_from_list(b);
+        }
+        return (char *)b +sizeof(Block);
+    }
+
+    b=expandheap(HEAP_SIZE);
+    if(b){
+        return(mymalloc(size));
+    }
+    return NULL;
+
+}
+
 /** frees block,
  * if necessary it coalesces with negihbors,
  * adjusts the free list
  */
 void myfree(void *p) {
-    Block *b=(Block *)p;
+    Block *b=(Block *)((char *)p - sizeof(Block)) ;
+    Block *left,*right;
     b->info.isfree = true;
 
-    left_coalesce(b);
-    right_coalesce(b);
+
+    left=left_coalesce(b);
+    right=right_coalesce(b);
     add_free_list(b);
 
 }
@@ -246,7 +247,7 @@ Block *split_block(Block *b, size_t block_count) {
     new->info.size=size;
     new->info.padding=0;
 
-    Tag *oldtag=(Tag *)((char *)new + sizeof(Block) + sizeof(Tag) + new->info.size);
+    Tag *oldtag=(Tag *)((char *)new + sizeof(Block) + new->info.size);
     oldtag->isfree=new->info.isfree;
     oldtag->padding=new->info.padding;
     oldtag->size=new->info.size;
@@ -297,7 +298,7 @@ Block *next_block_in_freelist(Block *b) {
     if(b->next==NULL){
         while(temp < heap_end && temp != NULL){
             temp=next_block_in_addr(temp);
-            if(temp->info.isfree){
+            if(temp->info.isfree && temp != heap_end){
                 return temp;
             }
         }
@@ -378,21 +379,28 @@ int setstrategy(Strategy strategynew) {
 
 int main(){
 
-    char *test=mymalloc(sizeof(char));
-    *test=1;
-    char *ch=mymalloc(sizeof(char));
-    *ch=2;
-    char *ch2=mymalloc(sizeof(char));
-    *ch2=2;
+    Block *b1,*b2,*b3;
+
+    char *c1=mymalloc(sizeof(char));
+    b1=(char *)c1 - sizeof(Block);
+    *c1=1;
+
+    char *c2=mymalloc(sizeof(char));
+    b2=(char *)c1 - sizeof(Block);
+    *c2=2;
+
+    char *c3=mymalloc(sizeof(char));
+    b3=(char *)c1 - sizeof(Block);
+    *c3=2;
     
-    printf("%d,%p",*test,test);
-    printf("%d,%p",*ch,ch);
-    printf("%d,%p",*ch2,ch2);
+    printf("%c,%p",*c1,c1);
+    printf("%c,%p",*c2,c2);
+    printf("%c,%p",*c3,c3);
 
-    myfree(ch);
-    ch=mymalloc(sizeof(char));
-    *ch=2;  
-    printf("%d,%p",*ch,ch);
+    myfree(c1);
+    c1=mymalloc(sizeof(char));
+    *c1=3;  
+    printf("%c,%p",*c1,c1);
 
-    exit(0);
+    return 0;
 }
