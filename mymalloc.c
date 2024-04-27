@@ -204,16 +204,16 @@ Block *left_coalesce(Block *b) {
     Block *left = prev_block_in_addr(b); // birleştirilecek olan block
     if (left != NULL && left->info.isfree == true) { // sol block varsa ve free ise birleştirilecek
             
-        left->info.size = left->info.size + sizeof(Block) + sizeof(Tag); // sol bloğun yeni boyutu
+        left->info.size = left->info.size + b->info.size + sizeof(Block) + sizeof(Tag); // sol bloğun yeni boyutu
             
-        Tag *newtag = (char *)left + left->info.size; // sol bloğun tag yapısı güncellenir
-        newtag->data_size = left->tag.data_size;
+        Tag *newtag = (char *)left + left->info.size + sizeof(Block); // sol bloğun tag yapısı güncellenir
+        newtag->info.size = left->info.size;
         newtag->isfree = true;
 
         free_block_from_list(b); // sağdaki blocku listeden çıkarabiliriz
         return left;
     }
-    return b; // sol block uygun değilse değişiklik yapılmadan aynı block return edilir
+    return NULL; // sol block uygun değilse NULL döndürülür
 }
 
 /** coalesce b with its right neighbor
@@ -225,14 +225,14 @@ Block *right_coalesce(Block *b) {
             
         b->info.size = b->info.size + right->info.size + sizeof(Block) + sizeof(Tag); // b'nin yeni boyutu sağ blockla total boyut olacak
             
-        Tag *newtag = (char *)b + b->info.size; // tag yapısı güncellenir
-        newtag->data_size = b->tag.data_size;
+        Tag *newtag = (char *)b + b->info.size + sizeof(Block); // tag yapısı güncellenir
+        newtag->info.size = b->info.size;
         newtag->isfree = true;
 
         free_block_from_list(right); // sağ bloğun artık free_listte olmasına gerek yok
         return b; // yeni block return edilir
     }
-    return b; // sağ blok uygun değilse değişiklik yapılmadan aynı block return edilir
+    return NULL; // sağ blok uygun değilse NULL döndürülür
 }
 
 
