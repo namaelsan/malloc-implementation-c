@@ -197,20 +197,44 @@ Block *split_block(Block *b, size_t block_count) {
     oldtag->size=new->info.size;
     return new;
 }
-
 /** coalesce b with its left neighbor
  * returns the final block
  */
-Block *left_coalesce(Block *b) { 
-    return NULL; 
+Block *left_coalesce(Block *b) {
+    Block *left = prev_block_in_addr(b); // birleştirilecek olan block
+    if (left != NULL && left->info.isfree == true) { // sol block varsa ve free ise birleştirilecek
+            
+        left->info.size = left->info.size + sizeof(Block) + sizeof(Tag); // sol bloğun yeni boyutu
+            
+        Tag *newtag = (char *)left + left->info.size; // sol bloğun tag yapısı güncellenir
+        newtag->data_size = left->tag.data_size;
+        newtag->isfree = true;
+
+        free_block_from_list(b); // sağdaki blocku listeden çıkarabiliriz
+        return left;
+    }
+    return b; // sol block uygun değilse değişiklik yapılmadan aynı block return edilir
 }
 
-/** coalesce b with its left neighbor
+/** coalesce b with its right neighbor
  * returns the final block
  */
-Block *right_coalesce(Block *b) { 
-    return NULL; 
+Block *right_coalesce(Block *b) {
+    Block *right = next_block_in_addr(b); // birleştirilecek olan block
+    if (right != NULL && right->info.isfree == true) { // sağ block varsa ve free ise
+            
+        b->info.size = b->info.size + right->info.size + sizeof(Block) + sizeof(Tag); // b'nin yeni boyutu sağ blockla total boyut olacak
+            
+        Tag *newtag = (char *)b + b->info.size; // tag yapısı güncellenir
+        newtag->data_size = b->tag.data_size;
+        newtag->isfree = true;
+
+        free_block_from_list(right); // sağ bloğun artık free_listte olmasına gerek yok
+        return b; // yeni block return edilir
+    }
+    return b; // sağ blok uygun değilse değişiklik yapılmadan aynı block return edilir
 }
+
 
 /** for a given block returns its next block in the list*/
 Block *next_block_in_freelist(Block *b) { 
