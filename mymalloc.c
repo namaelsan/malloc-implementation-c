@@ -7,19 +7,36 @@
 #define false 0
 
 void free_block_from_list(Block *b){
+        Block *prev;
+        Block *next;
+
         if(b==free_list)
             free_list=next_block_in_freelist(b);
-        Block *prev=b->prev;
-        Block *next=b->next;
-        prev->next=next;
-        next->prev=prev;
+
+        if (UNORDERED_LIST){
+            next=b->next;
+            prev = b->prev;
+        }
+        else if(ADDR_ORDERED_LIST){
+            next=next_block_in_freelist(b);
+            prev = prev_block_in_freelist(b);
+        }
+
+        if(next != NULL)
+            next->prev = prev;
+        if(prev != NULL)
+            prev->next=next;
+        if(next == NULL && prev == NULL)
+            free_list=NULL;
+
+        b->info.isfree=false;
         b->prev=NULL;
         b->next=NULL;
 }
 
 Block *find_free_block(size_t block_count){
     Block *b=free_list;
-    Block *prev,*next,*new,*temp,*min,*max;
+    Block *min,*max;
     size_t size=block_count*16;
 
     if(getstrategy() == BEST_FIT){
@@ -85,7 +102,7 @@ Block *find_free_block(size_t block_count){
             return NULL; // listede uygun block yoktur null dönderilir
         }
     }
-    
+    return NULL;
 }
 
 
@@ -97,7 +114,7 @@ Block *create_block(Block *b,size_t data_size){
     b->info.size=size;
     b->info.padding=0;
 
-    Tag* newtag=(char *)b + size + sizeof(Block);
+    Tag* newtag=(Tag *)((char *)b + size + sizeof(Block));
     newtag->isfree=true;
     newtag->size=size;
     newtag->padding=0;
@@ -112,12 +129,12 @@ Block *create_block(Block *b,size_t data_size){
 }
 
 Block *expandheap(size_t size){
-        char *start = sbrk(HEAP_SIZE);
+        Block *start = sbrk(HEAP_SIZE);
         if (start == -1) {
             perror("sbrk error: not available memory");
             return NULL;
         }
-        heap_end = start + size;
+        heap_end = (Block *)((char *)start + size);
         Block *b = create_block(start, size);
         return b;
 }
@@ -132,7 +149,7 @@ void *mymalloc(size_t size) {
     if (first){
         heap_start=expandheap(HEAP_SIZE);
         first=false;
-        heap_end=(char *)heap_start+HEAP_SIZE;
+        heap_end=(Block *)((char *)heap_start+HEAP_SIZE);
         free_list=heap_start;
     }
 
@@ -157,19 +174,7 @@ void *mymalloc(size_t size) {
 
 }
 
-/** frees block,
- * if necessary it coalesces with negihbors,
- * adjusts the free list
- */
-void myfree(Block *p) {
-    p->info.isfree = true;
-
-    left_coalesce(p);
-    right_coalesce(p);
-
-}
-
-
+/*  */
 void add_free_list(Block *b){
     Block *temp = free_list;
     Block *next,*prev;
@@ -197,9 +202,23 @@ void add_free_list(Block *b){
         b->next = next;
 
     }
-    
+}
+
+/** frees block,
+ * if necessary it coalesces with negihbors,
+ * adjusts the free list
+ */
+void myfree(void *p) {
+    Block *b=(Block *)p;
+    b->info.isfree = true;
+
+    left_coalesce(b);
+    right_coalesce(b);
+    add_free_list(b);
 
 }
+
+
 
 /** splits block, by using the size(in 16 byte blocks)
  * returns the left block,
@@ -208,13 +227,13 @@ void add_free_list(Block *b){
 Block *split_block(Block *b, size_t block_count) { 
     size_t size=block_count*16;
 
-    if (b->info.size < (char *)size +sizeof(Block) +sizeof(Tag))
+    if (b->info.size < size +sizeof(Block) +sizeof(Tag))
         return NULL; 
 
     int newbsize=b->info.size -size -sizeof(Block) -sizeof(Tag);
 
-    Block *new=(char *)b + sizeof(Block) + newbsize +sizeof(Tag);
-    Tag *newtag=((char *)new-sizeof(Tag));
+    Block *new=(Block *)((char *)b + sizeof(Block) + newbsize +sizeof(Tag));
+    Tag *newtag=(Tag *)((char *)new-sizeof(Tag));
 
     b->info.size=newbsize;
     newtag->size=newbsize;
@@ -227,7 +246,7 @@ Block *split_block(Block *b, size_t block_count) {
     new->info.size=size;
     new->info.padding=0;
 
-    Tag *oldtag=(char *)new + sizeof(Block) + sizeof(Tag) + new->info.size;
+    Tag *oldtag=(Tag *)((char *)new + sizeof(Block) + sizeof(Tag) + new->info.size);
     oldtag->isfree=new->info.isfree;
     oldtag->padding=new->info.padding;
     oldtag->size=new->info.size;
@@ -242,7 +261,7 @@ Block *left_coalesce(Block *b) {
             
         left->info.size = left->info.size + b->info.size + sizeof(Block) + sizeof(Tag); // sol bloğun yeni boyutu
             
-        Tag *newtag = (char *)left + left->info.size + sizeof(Block); // sol bloğun tag yapısı güncellenir
+        Tag *newtag = (Tag *)((char *)left + left->info.size + sizeof(Block)); // sol bloğun tag yapısı güncellenir
         newtag->size = left->info.size;
         newtag->isfree = true;
 
@@ -261,7 +280,7 @@ Block *right_coalesce(Block *b) {
             
         b->info.size = b->info.size + right->info.size + sizeof(Block) + sizeof(Tag); // b'nin yeni boyutu sağ blockla total boyut olacak
             
-        Tag *newtag = (char *)b + b->info.size + sizeof(Block); // tag yapısı güncellenir
+        Tag *newtag = (Tag *)((char *)b + b->info.size + sizeof(Block)); // tag yapısı güncellenir
         newtag->size = b->info.size;
         newtag->isfree = true;
 
@@ -304,14 +323,14 @@ Block *prev_block_in_freelist(Block *b) {
 
 /** for a given block returns its right neghbor in the address*/
 Block *next_block_in_addr(Block *b) { 
-    Block *new=(char *)b + sizeof(Block) + b->info.size +b->info.padding + sizeof(Tag);
+    Block *new=(Block *)((char *)b + sizeof(Block) + b->info.size +b->info.padding + sizeof(Tag));
     return new;
 }
 
 /** for a given block returns its left neghbor in the address*/
 Block *prev_block_in_addr(Block *b) { 
-    Tag *tag=(char *)b -sizeof(Tag);
-    Block *new=(char *)tag -(tag->size + tag->padding + sizeof(Block));
+    Tag *tag=(Tag *)((char *)b -sizeof(Tag));
+    Block *new=(Block *)((char *)tag -(tag->size + tag->padding + sizeof(Block)));
     return new;
 }
 
@@ -332,7 +351,7 @@ void printheap() {
     Block *current=heap_start;
     printf("Blocks\n\n");
     while(current!=heap_end){
-        printf("Free: %d\n\nSize: %d\n\n---------------\n\n",current->info.isfree,current->info.size);
+        printf("Free: %u\n\nSize: %lu\n\n---------------\n\n",current->info.isfree,current->info.size);
         current=next_block_in_addr(current);
     }
 }
@@ -357,7 +376,7 @@ int setstrategy(Strategy strategynew) {
 
 
 
-void main(){
+int main(){
 
     char *test=mymalloc(sizeof(char));
     *test=1;
@@ -365,6 +384,7 @@ void main(){
     *ch=2;
     char *ch2=mymalloc(sizeof(char));
     *ch2=2;
+    
     printf("%d,%p",*test,test);
     printf("%d,%p",*ch,ch);
     printf("%d,%p",*ch2,ch2);
