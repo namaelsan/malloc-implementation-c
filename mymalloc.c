@@ -43,7 +43,7 @@ Block *find_free_block(size_t block_count){
         min=b;
 
         while(b<heap_end && b!= NULL){
-            if((min->info.size > b->info.size) && (min->info.size >= size)){
+            if((min->info.size > b->info.size) && (b->info.size >= size)){
                 min=b;
             }
             b=next_block_in_freelist(b);
@@ -109,6 +109,7 @@ Block *find_free_block(size_t block_count){
 void add_free_list(Block *b){
     Block *temp = free_list;
     Block *next,*prev;
+    b->info.isfree=true;
 
     if(free_list == NULL)
         free_list = b;
@@ -156,7 +157,8 @@ Block *create_block(Block *b,size_t data_size){
 
 Block *expandheap(size_t size){
         Block *start = sbrk(HEAP_SIZE);
-        heap_start = start;
+        if(!heap_start)
+            heap_start = start;
         if ((uint64_t)start == -1) {
             perror("sbrk error: not available memory");
             return NULL;
@@ -399,9 +401,6 @@ int main(){
     b3=(char *)c3 - sizeof(Block);
     *c3='S';
     
-    printf("%c,%p\n",*c1,c1);
-    printf("%c,%p\n",*c2,c2);
-    printf("%c,%p\n",*c3,c3);
 
     myfree(c1);
     c1=mymalloc(sizeof(char)*18);
@@ -413,8 +412,7 @@ int main(){
     c1[3]=0;
 
     
-
-    printf("%s,%p\n",c1,c1);
+    printheap();
 
     return 0;
 }
