@@ -183,7 +183,7 @@ void *mymalloc(size_t size) {
     int block_count=numberof16blocks(size);
     b = find_free_block(block_count);
 
-    if(b->info.size >= size){
+    if(b != NULL && b->info.size >= size){
         if(b->info.size >= size + sizeof(Block) + sizeof(Tag)){
             new=split_block(b,block_count);
             add_free_list(b);
@@ -313,7 +313,10 @@ Block *prev_block_in_freelist(Block *b) {
     if(b->prev==NULL){
         while(temp >= heap_start && temp != NULL){
             temp=prev_block_in_addr(temp);
-            if(temp->info.isfree){
+            if (temp == NULL){
+                return NULL;
+            }
+            else if(temp->info.isfree){
                 return temp;
             }
         }
@@ -331,6 +334,9 @@ Block *next_block_in_addr(Block *b) {
 /** for a given block returns its left neghbor in the address*/
 Block *prev_block_in_addr(Block *b) { 
     Tag *tag=(Tag *)((char *)b -sizeof(Tag));
+    if(tag < heap_start || tag == NULL){
+        return NULL;
+    }
     Block *new=(Block *)((char *)tag -(tag->size + tag->padding + sizeof(Block)));
     return new;
 }
@@ -379,28 +385,36 @@ int setstrategy(Strategy strategynew) {
 
 int main(){
 
-    Block *b1,*b2,*b3;
+    Block *b1,*b2,*b3,*b4;
 
     char *c1=mymalloc(sizeof(char));
     b1=(char *)c1 - sizeof(Block);
-    *c1=1;
+    *c1='a';
 
     char *c2=mymalloc(sizeof(char));
-    b2=(char *)c1 - sizeof(Block);
-    *c2=2;
+    b2=(char *)c2 - sizeof(Block);
+    *c2='x';
 
     char *c3=mymalloc(sizeof(char));
-    b3=(char *)c1 - sizeof(Block);
-    *c3=2;
+    b3=(char *)c3 - sizeof(Block);
+    *c3='S';
     
-    printf("%c,%p",*c1,c1);
-    printf("%c,%p",*c2,c2);
-    printf("%c,%p",*c3,c3);
+    printf("%c,%p\n",*c1,c1);
+    printf("%c,%p\n",*c2,c2);
+    printf("%c,%p\n",*c3,c3);
 
     myfree(c1);
-    c1=mymalloc(sizeof(char));
-    *c1=3;  
-    printf("%c,%p",*c1,c1);
+    c1=mymalloc(sizeof(char)*18);
+    b4=(char *)c1 - sizeof(Block);
+
+    c1[0]='a';
+    c1[1]='b';
+    c1[2]='c';
+    c1[3]=0;
+
+    
+
+    printf("%s,%p\n",c1,c1);
 
     return 0;
 }
