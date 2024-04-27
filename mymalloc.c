@@ -161,7 +161,43 @@ void *mymalloc(size_t size) {
  * if necessary it coalesces with negihbors,
  * adjusts the free list
  */
-void myfree(void *p) {
+void myfree(Block *p) {
+    p->info.isfree = true;
+
+    left_coalesce(p);
+    right_coalesce(p);
+
+}
+
+
+void add_free_list(Block *b){
+    Block *temp = free_list;
+    Block *next,*prev;
+
+    if(free_list == NULL)
+        free_list = b;
+
+    else if(getlisttype() == UNORDERED_LIST){
+        while(temp != NULL && temp->next == NULL){
+            temp = temp->next;
+        }
+        temp->next = b;
+
+    }else if(getlisttype() == ADDR_ORDERED_LIST){
+        next = next_block_in_freelist(b);
+        if(next != NULL)
+            next->prev = b;
+        prev = prev_block_in_freelist(b);
+        if(prev != NULL)
+            prev->next = b;
+        else
+            free_list = b;
+
+        b->prev = prev;
+        b->next = next;
+
+    }
+    
 
 }
 
