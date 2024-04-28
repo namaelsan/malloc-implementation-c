@@ -1,12 +1,11 @@
 /*
-
 28/04/2024
 
 Enhar Apuhan 22120205012
 Mervenur Saraç 22120205055
 
 This program includes basic implementations of the mymalloc and myfree functions.
-mymalloc function simply allocates memory of the requested size from the heap 
+mymalloc function simply allocates memory of the requested size in bytes from the heap 
 and myfree function deallocates the previously allocated memory, making it available again for use.
 
 */
@@ -29,12 +28,12 @@ void free_block_from_list(Block *b){
         if(b==free_list)
             free_list=next_block_in_freelist(b);
 
+        /* finds the right location based on the list type */
         if (getlisttype() == UNORDERED_LIST){    
             next=b->next;
             prev = b->prev;
         }
         else if(getlisttype() == ADDR_ORDERED_LIST){
-        /* if listtype is ordered, finds the right location */
             next=next_block_in_freelist(b);
             prev = prev_block_in_freelist(b);
         }
@@ -86,7 +85,7 @@ Block *find_free_block(size_t block_count){
         }
 
         b = heap_start; 
-        /* if it cannot find a block it checks all block from beginning of free_list to the last_freed */
+        /* if it cannot find a block it checks all blocks from the beginning of free_list to the last_freed */
         while(b < last_freed && b!= NULL){ 
             if(b->info.size >= size){ 
             return b;  
@@ -97,7 +96,7 @@ Block *find_free_block(size_t block_count){
     }
     
     else if(getstrategy() == FIRST_FIT){
-        /* first_fit returns the first block in the free_list that can provide the size */
+        /* first_fit returns the first block in the free_list that can provide the size requested */
      
         while(b < heap_end && b!= NULL){
             if(b->info.size >= size){
@@ -109,7 +108,7 @@ Block *find_free_block(size_t block_count){
     }
         
     else if(getstrategy() == WORST_FIT){
-    /* worst_fit returns the biggest block in the free_list if it  can provide the size */    
+    /* worst_fit returns the biggest block in the free_list that can provide the size requested */    
 
         max = b; 
         while(b < heap_end && b != NULL){
@@ -138,7 +137,7 @@ void add_free_list(Block *b){
     }
 
     else if(getlisttype() == UNORDERED_LIST){ 
-    /* if littype is unordered, block is added to end oof the list */    
+    /* if listtype is unordered, block is added to end oof the list */    
         while(temp != NULL && temp->next != NULL){
             temp = temp->next;
         }
@@ -163,19 +162,18 @@ void add_free_list(Block *b){
 
     }
 }
-/* this function creates a user-specified block from large sbrk-allocated memory block
-*/
+/* this function creates a user-specified block from large sbrk-allocated memory block */
 Block *create_block(Block *b,size_t data_size){ 
     size_t size=data_size-(sizeof(Block)+sizeof(Tag));
     b->info.size=size;
-    b->info.isfree=false;
+    b->info.isfree=true;
     b->info.padding=0;
     b->next=next_block_in_freelist(b);
     b->prev=prev_block_in_freelist(b);
 
 
     Tag* newtag=(Tag *)((char *)b + size + sizeof(Block));
-    newtag->isfree=false;
+    newtag->isfree=true;
     newtag->size=size;
     newtag->padding=0;
 
@@ -183,8 +181,9 @@ Block *create_block(Block *b,size_t data_size){
 
     return b;
 }
-/** this function allocates a large block of memory from heap using sbrk,
- * and creates a block for it.
+/*  this function allocates a large block of memory from heap using sbrk,
+*   and creates a block for it.
+*   returns the created blocks address
 */
 Block *expandheap(size_t size){ 
         Block *start = sbrk(HEAP_SIZE);
@@ -200,14 +199,15 @@ Block *expandheap(size_t size){
         return b;
 }
 
-/** finds a block based on strategy,
- * if necessary it splits the block,
- * allocates memory,
- * returns the start addrees of data[]*/
+/*  finds a block based on strategy,
+*   if necessary it splits the block,
+*   allocates memory,
+*   returns the start addrees of data 
+*/
 
-/* initially allocates a large block from memory,
-* then upon each call,organizes the most suitable free block
-* and returns it
+/*  initially allocates a large block from memory,
+*   then upon each call,organizes the most suitable free block
+*   and returns it
 */
 void *mymalloc(size_t size) { 
     static int first=true;
@@ -242,14 +242,10 @@ void *mymalloc(size_t size) {
 
 }
 
-/** frees block,
- * if necessary it coalesces with negihbors,
- * adjusts the free list
- */
 
-/* frees the given block,
-* if block has a free neighbor it coalesces with it
-* and block is added to free_list
+/*  frees the block located at p,
+*   if necessary it coalesces with neighbors,
+*   adjusts the free list
 */
 void myfree(void *p) {
     Block *b=(Block *)((char *)p - sizeof(Block));
@@ -260,12 +256,6 @@ void myfree(void *p) {
     add_free_list(b);
 }
 
-
-
-/** splits block, by using the size(in 16 byte blocks)
- * returns the left block,
- * make necessary adjustments to the free list
- */
 
 /* splits blocks for better memory useage,
 * organizes new block information,
@@ -300,13 +290,10 @@ Block *split_block(Block *b, size_t block_count) {
     return new;
 }
 
-/** coalesce b with its left neighbor
- * returns the final block
- */
 
-/* if there are two neighboring free blocks,
-* this function coalesces the right block into the left block
- */
+/* coalesce's b with its left neighbor
+*  returns the final block
+*/
 Block *left_coalesce(Block *b) {
     Block *left = prev_block_in_addr(b);
     if (left != NULL && left->info.isfree == true) {
@@ -323,12 +310,9 @@ Block *left_coalesce(Block *b) {
     return NULL;
 }
 
-/** coalesce b with its right neighbor
- * returns the final block
- */
 
-/* if there are two neighboring free blocks,
-* this function coalesces the left block into the right block
+/*  coalesce b with its right neighbor
+*   returns the final block
 */
 Block *right_coalesce(Block *b) {
     Block *right = next_block_in_addr(b); 
@@ -348,9 +332,10 @@ Block *right_coalesce(Block *b) {
 }
 
 
-/** for a given block returns its next block in the list*/
-
-/* finds the next free block in heap and returns it */
+/*  finds the next block in the freelist. if no such block exists,
+*   finds the next free block in heap and returns it 
+*   returns NULL if no blocks are found
+*/
 Block *next_block_in_freelist(Block *b) {  
     Block *temp=b;
     if(b->next==NULL){
@@ -365,9 +350,11 @@ Block *next_block_in_freelist(Block *b) {
     return b->next; 
 }
 
-/** for a given block returns its prev block in the list*/
 
-/* finds the previos free block in heap and returns it */
+/*  finds the previos block in the freelist. if no such block exists, 
+*   finds the previous free block in heap and returns it 
+*   returns NULL if no blocks are found
+*/
 Block *prev_block_in_freelist(Block *b) { 
     Block *temp=b;
     if(b->prev==NULL){
@@ -385,7 +372,6 @@ Block *prev_block_in_freelist(Block *b) {
     return b->prev; 
 }
 
-/** for a given block returns its right neghbor in the address*/
 
 /* finds the next block in the heap and returns it */
 Block *next_block_in_addr(Block *b) { 
@@ -393,7 +379,6 @@ Block *next_block_in_addr(Block *b) {
     return new;
 }
 
-/** for a given block returns its left neghbor in the address*/
 
 /* finds the previous block in the heap and returns it */
 Block *prev_block_in_addr(Block *b) { 
@@ -405,7 +390,6 @@ Block *prev_block_in_addr(Block *b) {
     return new;
 }
 
-/**for a given size in bytes, returns number of 16 blocks*/
 
 /* calculates the number of 16 byte blocks required to the given byte size and returns it */
 uint64_t numberof16blocks(size_t size_inbytes) { 
@@ -414,14 +398,8 @@ uint64_t numberof16blocks(size_t size_inbytes) {
     return size_inbytes;
 }
 
-/** prints meta data of the blocks
- * --------
- * size:
- * free:
- * --------
- */
 
-/* prints meta data of all blocks in the heap */
+/* prints the metadata of all blocks in the heap */
 void printheap() {
     Block *current=heap_start;
     printf("Blocks\n\n");
@@ -431,19 +409,23 @@ void printheap() {
     }
 }
 
+/* returns the list type */
 ListType getlisttype() { 
     return listtype; 
 }
 
+/* sets the list type to the input */
 int setlisttype(ListType listtypenew) { 
     listtype = listtypenew;
     return 0; 
 }
 
+/* returns the strategy */
 Strategy getstrategy() { 
     return strategy; 
 }
 
+/* sets the strategy to the input */
 int setstrategy(Strategy strategynew) { 
     strategy=strategynew;
     return 0; 
