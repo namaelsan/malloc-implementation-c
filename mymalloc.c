@@ -1,3 +1,11 @@
+/*
+Enhar Apuhan 22120205012
+Mervenur Saraç 22120205055
+
+*/
+
+
+
 #include "mymalloc.h"
 
 #include <stdio.h>
@@ -13,11 +21,11 @@ void free_block_from_list(Block *b){
         if(b==free_list)
             free_list=next_block_in_freelist(b);
 
-        if (UNORDERED_LIST){
+        if (getlisttype() == UNORDERED_LIST){
             next=b->next;
             prev = b->prev;
         }
-        else if(ADDR_ORDERED_LIST){
+        else if(getlisttype() == ADDR_ORDERED_LIST){
             next=next_block_in_freelist(b);
             prev = prev_block_in_freelist(b);
         }
@@ -32,6 +40,7 @@ void free_block_from_list(Block *b){
         b->info.isfree=false;
         b->prev=NULL;
         b->next=NULL;
+ 
 }
 
 Block *find_free_block(size_t block_count){
@@ -56,14 +65,13 @@ Block *find_free_block(size_t block_count){
     
     else if(getstrategy() == NEXT_FIT){
         b = last_freed; // aramayı en son free edilmiş blocktan başlat
-        
-        while(b < heap_end && b!= NULL){
-            if(b->info.size >= size){ // last_freed'den heap_end'e kadar kontrol et
+
+        while(b < heap_end && b!= NULL){// last_freed'den heap_end'e kadar kontrol et
+            if(b->info.size >= size){ 
             return b;  // uygun değer bulunursa return et
             }
             b = next_block_in_freelist(b);   	
         }
-        
         // uygun block bulunamadıysa
         b = heap_start; // b, heap_start değerine sıfırlanır
         while(b < last_freed && b!= NULL){  // başlangıçtan last_freed'e kadar kontrol et
@@ -95,12 +103,11 @@ Block *find_free_block(size_t block_count){
             }
             b = next_block_in_freelist(b);     
         }
-
-        if (max != free_list) { // uygun block bulunmuştur
+        if (max != NULL) { // uygun block bulunmuştur
             return max;
         } else {
             return NULL; // listede uygun block yoktur null dönderilir
-        }
+        } 
     }
     return NULL;
 }
@@ -132,11 +139,12 @@ void add_free_list(Block *b){
 
         b->prev = prev;
         b->next = next;
+        last_freed = b;
 
     }
 }
-
-Block *create_block(Block *b,size_t data_size){
+/*kullanıcının istediiği boyutta bir block yapısı oluşturulur*/
+Block *create_block(Block *b,size_t data_size){ 
     size_t size=data_size-(sizeof(Block)+sizeof(Tag));
     b->info.size=size;
     b->info.isfree=false;
@@ -154,8 +162,11 @@ Block *create_block(Block *b,size_t data_size){
 
     return b;
 }
-
-Block *expandheap(size_t size){
+/**mymalloc fonksiyonu ilk defa çağrıdığında sbrk ile bellekten büyük bir alan ayrılır
+*heap için başlangıç ve bitiş bilgileri atanır
+*istenilen alan için blok oluşturulur
+*/
+Block *expandheap(size_t size){ 
         Block *start = sbrk(HEAP_SIZE);
         if(!heap_start)
             heap_start = start;
@@ -295,7 +306,7 @@ Block *right_coalesce(Block *b) {
 
 
 /** for a given block returns its next block in the list*/
-Block *next_block_in_freelist(Block *b) { 
+Block *next_block_in_freelist(Block *b) {  
     Block *temp=b;
     if(b->next==NULL){
         while(temp < heap_end && temp != NULL){
@@ -386,18 +397,21 @@ int setstrategy(Strategy strategynew) {
 
 
 int main(){
+    
+    setlisttype(ADDR_ORDERED_LIST);
+    setstrategy(NEXT_FIT);
 
     Block *b1,*b2,*b3,*b4;
 
-    char *c1=mymalloc(sizeof(char));
+    char *c1 = mymalloc(sizeof(char));
     b1=(char *)c1 - sizeof(Block);
     *c1='a';
 
-    char *c2=mymalloc(sizeof(char));
+    char *c2 = mymalloc(sizeof(char));
     b2=(char *)c2 - sizeof(Block);
     *c2='x';
 
-    char *c3=mymalloc(sizeof(char));
+    char *c3 = mymalloc(sizeof(char));
     b3=(char *)c3 - sizeof(Block);
     *c3='S';
     
