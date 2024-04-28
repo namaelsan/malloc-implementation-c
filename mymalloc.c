@@ -118,14 +118,16 @@ void add_free_list(Block *b){
     Block *next,*prev;
     b->info.isfree=true;
 
-    if(free_list == NULL)
+    if(free_list == NULL){
         free_list = b;
+    }
 
     else if(getlisttype() == UNORDERED_LIST){
-        while(temp != NULL && temp->next == NULL){
+        while(temp != NULL && temp->next != NULL){
             temp = temp->next;
         }
-        temp->next = b;
+        if(temp != b)
+            temp->next = b;
 
     }else if(getlisttype() == ADDR_ORDERED_LIST){
         next = next_block_in_freelist(b);
@@ -189,6 +191,7 @@ void *mymalloc(size_t size) {
     Block *b,*new;
     if (first){
         heap_start=expandheap(HEAP_SIZE);
+        last_freed=heap_start;
         first=false;
         heap_end=(Block *)((char *)heap_start+HEAP_SIZE);
     }
@@ -398,8 +401,8 @@ int setstrategy(Strategy strategynew) {
 
 int main(){
     
-    setlisttype(ADDR_ORDERED_LIST);
-    setstrategy(NEXT_FIT);
+    setlisttype(UNORDERED_LIST);
+    setstrategy(WORST_FIT);
 
     Block *b1,*b2,*b3,*b4;
 
