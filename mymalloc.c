@@ -43,6 +43,7 @@ void free_block_from_list(Block *b){
  
 }
 
+
 Block *find_free_block(size_t block_count){
     Block *b=free_list;
     Block *min,*max;
@@ -224,15 +225,12 @@ void *mymalloc(size_t size) {
  * adjusts the free list
  */
 void myfree(void *p) {
-    Block *b=(Block *)((char *)p - sizeof(Block)) ;
-    Block *left,*right;
+    Block *b=(Block *)((char *)p - sizeof(Block));
     b->info.isfree = true;
 
-
-    left=left_coalesce(b);
-    right=right_coalesce(b);
+    left_coalesce(b);
+    right_coalesce(b);
     add_free_list(b);
-
 }
 
 
@@ -350,7 +348,7 @@ Block *next_block_in_addr(Block *b) {
 /** for a given block returns its left neghbor in the address*/
 Block *prev_block_in_addr(Block *b) { 
     Tag *tag=(Tag *)((char *)b -sizeof(Tag));
-    if(tag < heap_start || tag == NULL){
+    if((char *)tag < (char *)heap_start || tag == NULL){
         return NULL;
     }
     Block *new=(Block *)((char *)tag -(tag->size + tag->padding + sizeof(Block)));
@@ -401,27 +399,22 @@ int setstrategy(Strategy strategynew) {
 
 int main(){
     
-    setlisttype(UNORDERED_LIST);
-    setstrategy(WORST_FIT);
+    setlisttype(ADDR_ORDERED_LIST);
+    setstrategy(NEXT_FIT);
 
-    Block *b1,*b2,*b3,*b4;
 
     char *c1 = mymalloc(sizeof(char));
-    b1=(char *)c1 - sizeof(Block);
     *c1='a';
 
     char *c2 = mymalloc(sizeof(char));
-    b2=(char *)c2 - sizeof(Block);
     *c2='x';
 
     char *c3 = mymalloc(sizeof(char));
-    b3=(char *)c3 - sizeof(Block);
     *c3='S';
     
 
     myfree(c1);
     c1=mymalloc(sizeof(char)*18);
-    b4=(char *)c1 - sizeof(Block);
 
     c1[0]='a';
     c1[1]='b';
