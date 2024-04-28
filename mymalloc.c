@@ -1,6 +1,13 @@
 /*
+
+28/04/2024
+
 Enhar Apuhan 22120205012
 Mervenur Saraç 22120205055
+
+This program includes basic implementations of the mymalloc and myfree functions.
+mymalloc function simply allocates memory of the requested size from the heap 
+and myfree function deallocates the previously allocated memory, making it available again for use.
 
 */
 
@@ -14,6 +21,7 @@ Mervenur Saraç 22120205055
 #define true 1
 #define false 0
 
+/* removes the given block from free_list according to the listtype */
 void free_block_from_list(Block *b){
         Block *prev;
         Block *next;
@@ -21,11 +29,12 @@ void free_block_from_list(Block *b){
         if(b==free_list)
             free_list=next_block_in_freelist(b);
 
-        if (getlisttype() == UNORDERED_LIST){
+        if (getlisttype() == UNORDERED_LIST){    
             next=b->next;
             prev = b->prev;
         }
         else if(getlisttype() == ADDR_ORDERED_LIST){
+        /* if listtype is ordered, finds the right location */
             next=next_block_in_freelist(b);
             prev = prev_block_in_freelist(b);
         }
@@ -43,13 +52,14 @@ void free_block_from_list(Block *b){
  
 }
 
-
+/* finds the free block according to the strategy */
 Block *find_free_block(size_t block_count){
     Block *b=free_list;
     Block *min,*max;
     size_t size=block_count*16;
 
     if(getstrategy() == BEST_FIT){
+    /* best_fit returns the smallest free block in the free_list thet can provide the size */    
         min=b;
 
         while(b<heap_end && b!= NULL){
@@ -65,26 +75,29 @@ Block *find_free_block(size_t block_count){
     }
     
     else if(getstrategy() == NEXT_FIT){
-        b = last_freed; // aramayı en son free edilmiş blocktan başlat
+    /* next_fit returns the firts free block after the last freed block */
+        b = last_freed; 
 
-        while(b < heap_end && b!= NULL){// last_freed'den heap_end'e kadar kontrol et
+        while(b < heap_end && b!= NULL){
             if(b->info.size >= size){ 
-            return b;  // uygun değer bulunursa return et
+            return b; 
             }
             b = next_block_in_freelist(b);   	
         }
-        // uygun block bulunamadıysa
-        b = heap_start; // b, heap_start değerine sıfırlanır
-        while(b < last_freed && b!= NULL){  // başlangıçtan last_freed'e kadar kontrol et
-            if(b->info.size >= size){ // uygun değer bulunursa return et
+
+        b = heap_start; 
+        /* if it cannot find a block it checks all block from beginning of free_list to the last_freed */
+        while(b < last_freed && b!= NULL){ 
+            if(b->info.size >= size){ 
             return b;  
             }	    			
             b = next_block_in_freelist(b); 
         }
-        return NULL; //tüm list iki döngü ile gezilmiş ama uygun block bulunamamışsa NULL return et
+        return NULL; 
     }
     
     else if(getstrategy() == FIRST_FIT){
+        /* first_fit returns the first block in the free_list that can provide the size */
      
         while(b < heap_end && b!= NULL){
             if(b->info.size >= size){
@@ -96,24 +109,25 @@ Block *find_free_block(size_t block_count){
     }
         
     else if(getstrategy() == WORST_FIT){
+    /* worst_fit returns the biggest block in the free_list if it  can provide the size */    
 
-        max = b; // max ilk bloktan başlar
+        max = b; 
         while(b < heap_end && b != NULL){
             if(b->info.size > max->info.size && b->info.size >= size){
                 max = b;
             }
             b = next_block_in_freelist(b);     
         }
-        if (max != NULL) { // uygun block bulunmuştur
+        if (max != NULL) { 
             return max;
         } else {
-            return NULL; // listede uygun block yoktur null dönderilir
+            return NULL; 
         } 
     }
     return NULL;
 }
 
-/*  */
+/* freed block is added to free_list according to the listtype */
 void add_free_list(Block *b){
     Block *temp = free_list;
     Block *next,*prev;
@@ -123,7 +137,8 @@ void add_free_list(Block *b){
         free_list = b;
     }
 
-    else if(getlisttype() == UNORDERED_LIST){
+    else if(getlisttype() == UNORDERED_LIST){ 
+    /* if littype is unordered, block is added to end oof the list */    
         while(temp != NULL && temp->next != NULL){
             temp = temp->next;
         }
@@ -131,6 +146,8 @@ void add_free_list(Block *b){
             temp->next = b;
 
     }else if(getlisttype() == ADDR_ORDERED_LIST){
+    /*if listtype is ordered, block is added to the list 
+    * based on its address*/    
         next = next_block_in_freelist(b);
         if(next != NULL)
             next->prev = b;
@@ -146,7 +163,8 @@ void add_free_list(Block *b){
 
     }
 }
-/*kullanıcının istediiği boyutta bir block yapısı oluşturulur*/
+/* this function creates a user-specified block from large sbrk-allocated memory block
+*/
 Block *create_block(Block *b,size_t data_size){ 
     size_t size=data_size-(sizeof(Block)+sizeof(Tag));
     b->info.size=size;
@@ -161,13 +179,12 @@ Block *create_block(Block *b,size_t data_size){
     newtag->size=size;
     newtag->padding=0;
 
-    add_free_list(b);
+    add_free_list(b); // the new block is added to free_list
 
     return b;
 }
-/**mymalloc fonksiyonu ilk defa çağrıdığında sbrk ile bellekten büyük bir alan ayrılır
-*heap için başlangıç ve bitiş bilgileri atanır
-*istenilen alan için blok oluşturulur
+/** this function allocates a large block of memory from heap using sbrk,
+ * and creates a block for it.
 */
 Block *expandheap(size_t size){ 
         Block *start = sbrk(HEAP_SIZE);
@@ -187,6 +204,11 @@ Block *expandheap(size_t size){
  * if necessary it splits the block,
  * allocates memory,
  * returns the start addrees of data[]*/
+
+/* initially allocates a large block from memory,
+* then upon each call,organizes the most suitable free block
+* and returns it
+*/
 void *mymalloc(size_t size) { 
     static int first=true;
     Block *b,*new;
@@ -224,6 +246,11 @@ void *mymalloc(size_t size) {
  * if necessary it coalesces with negihbors,
  * adjusts the free list
  */
+
+/* frees the given block,
+* if block has a free neighbor it coalesces with it
+* and block is added to free_list
+*/
 void myfree(void *p) {
     Block *b=(Block *)((char *)p - sizeof(Block));
     b->info.isfree = true;
@@ -239,6 +266,11 @@ void myfree(void *p) {
  * returns the left block,
  * make necessary adjustments to the free list
  */
+
+/* splits blocks for better memory useage,
+* organizes new block information,
+* and returns the block to be used.
+*/
 Block *split_block(Block *b, size_t block_count) { 
     size_t size=block_count*16;
 
@@ -267,46 +299,58 @@ Block *split_block(Block *b, size_t block_count) {
     oldtag->size=new->info.size;
     return new;
 }
+
 /** coalesce b with its left neighbor
  * returns the final block
  */
+
+/* if there are two neighboring free blocks,
+* this function coalesces the right block into the left block
+ */
 Block *left_coalesce(Block *b) {
-    Block *left = prev_block_in_addr(b); // birleştirilecek olan block
-    if (left != NULL && left->info.isfree == true) { // sol block varsa ve free ise birleştirilecek
+    Block *left = prev_block_in_addr(b);
+    if (left != NULL && left->info.isfree == true) {
             
-        left->info.size = left->info.size + b->info.size + sizeof(Block) + sizeof(Tag); // sol bloğun yeni boyutu
+        left->info.size = left->info.size + b->info.size + sizeof(Block) + sizeof(Tag);
             
-        Tag *newtag = (Tag *)((char *)left + left->info.size + sizeof(Block)); // sol bloğun tag yapısı güncellenir
+        Tag *newtag = (Tag *)((char *)left + left->info.size + sizeof(Block));
         newtag->size = left->info.size;
         newtag->isfree = true;
 
-        free_block_from_list(b); // sağdaki blocku listeden çıkarabiliriz
+        free_block_from_list(b);
         return left;
     }
-    return NULL; // sol block uygun değilse NULL döndürülür
+    return NULL;
 }
 
 /** coalesce b with its right neighbor
  * returns the final block
  */
+
+/* if there are two neighboring free blocks,
+* this function coalesces the left block into the right block
+*/
 Block *right_coalesce(Block *b) {
-    Block *right = next_block_in_addr(b); // birleştirilecek olan block
-    if (right != NULL && right->info.isfree == true) { // sağ block varsa ve free ise
+    Block *right = next_block_in_addr(b); 
+    if (right != NULL && right->info.isfree == true) { 
             
-        b->info.size = b->info.size + right->info.size + sizeof(Block) + sizeof(Tag); // b'nin yeni boyutu sağ blockla total boyut olacak
+        b->info.size = b->info.size + right->info.size + sizeof(Block) + sizeof(Tag); 
             
-        Tag *newtag = (Tag *)((char *)b + b->info.size + sizeof(Block)); // tag yapısı güncellenir
+        Tag *newtag = (Tag *)((char *)b + b->info.size + sizeof(Block)); 
         newtag->size = b->info.size;
         newtag->isfree = true;
 
-        free_block_from_list(right); // sağ bloğun artık free_listte olmasına gerek yok
-        return b; // yeni block return edilir
+        free_block_from_list(right); 
+
+        return b; 
     }
-    return NULL; // sağ blok uygun değilse NULL döndürülür
+    return NULL; 
 }
 
 
 /** for a given block returns its next block in the list*/
+
+/* finds the next free block in heap and returns it */
 Block *next_block_in_freelist(Block *b) {  
     Block *temp=b;
     if(b->next==NULL){
@@ -322,6 +366,8 @@ Block *next_block_in_freelist(Block *b) {
 }
 
 /** for a given block returns its prev block in the list*/
+
+/* finds the previos free block in heap and returns it */
 Block *prev_block_in_freelist(Block *b) { 
     Block *temp=b;
     if(b->prev==NULL){
@@ -340,12 +386,16 @@ Block *prev_block_in_freelist(Block *b) {
 }
 
 /** for a given block returns its right neghbor in the address*/
+
+/* finds the next block in the heap and returns it */
 Block *next_block_in_addr(Block *b) { 
     Block *new=(Block *)((char *)b + sizeof(Block) + b->info.size +b->info.padding + sizeof(Tag));
     return new;
 }
 
 /** for a given block returns its left neghbor in the address*/
+
+/* finds the previous block in the heap and returns it */
 Block *prev_block_in_addr(Block *b) { 
     Tag *tag=(Tag *)((char *)b -sizeof(Tag));
     if((char *)tag < (char *)heap_start || tag == NULL){
@@ -356,6 +406,8 @@ Block *prev_block_in_addr(Block *b) {
 }
 
 /**for a given size in bytes, returns number of 16 blocks*/
+
+/* calculates the number of 16 byte blocks required to the given byte size and returns it */
 uint64_t numberof16blocks(size_t size_inbytes) { 
     size_inbytes+=16-(size_inbytes % 16);
     size_inbytes/=16;
@@ -368,6 +420,8 @@ uint64_t numberof16blocks(size_t size_inbytes) {
  * free:
  * --------
  */
+
+/* prints meta data of all blocks in the heap */
 void printheap() {
     Block *current=heap_start;
     printf("Blocks\n\n");
@@ -396,7 +450,7 @@ int setstrategy(Strategy strategynew) {
 }
 
 
-
+/* main function that calls mymalloc and myfree functions */
 int main(){
     
     setlisttype(ADDR_ORDERED_LIST);
